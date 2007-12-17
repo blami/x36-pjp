@@ -1,0 +1,284 @@
+Atributova gramatika (Pascal -> JASM)
+syntaxi rizeny preklad do jazyka zasobnikoveho pocitace
+
+Ondrej Balaz <balazo1@fel.cvut.cz>
+Skupina: ctvrtek, 14:30
+
+ATRIBUTY:
+=========
+Synt. element:              Dědičné atributy:           Syntet. atributy:
+                            (argumenty)                 (navratove hod.)
+
+addVar                      identifier                  
+printInstruction                                        instruction
+neg                         type
+op                          left, right, operator       type
+ldc                         type, value
+print                       type
+celeCislo                                               value
+realneCislo                                             value
+OznaceniTypu                                            type
+SlozenyPrikaz               firstCmd                    nextCmd
+PosloupnostPrikazu          firstCmd                    nextCmd
+Prikaz                      firstCmd                    nextCmd
+PrazdnyPrikaz               firstCmd                    nextCmd
+PrirazovaciPrikaz           firstCmd                    nextCmd
+Vyraz                                                   type
+Znamenko                                                operator
+Term                                                    type
+Faktor                                                  type
+ZbytekTermu                 left                        type
+MultiplikativniOperator                                 operator
+ZbytekVyrazu                left                        type
+AditivniOperator                                        operator
+ZbytekPosloupnostiPrikazu   firstCmd                    nextCmd
+PrikazIf                    firstCmd                    nextCmd
+Podminka                    type, oper
+RelacniOperator                                         operator
+CastElse                    firstCmd, nestedCmd         nextCmd
+PrikazWhile                 firstCmd                    nextCmd
+PrikazFor                   firstCmd                    nextCmd
+CastFor                                                 direction
+PrikazWriteln               firstCmd                    nextCmd
+identifikator                                           type, address, value
+
+SEMANTIKA:
+==========
+01 Program -> program identifikator printInstruction1 ; Blok . printInstruction2
+    printInstruction1.instruction = 
+        ".class public " + identifikator.val +
+        ".super java/lang/Object" +
+        ".method public static main([Ljava/lang/String;)V" +
+        ".limit stack 20" +
+        ".limit locals 20"
+    printInstruction2.instruction = 
+        "return" +
+        ".end method"
+
+02 Blok -> UsekDeklaraciPromennych SlozenyPrikaz
+    SlozenyPrikaz.firstCmd = 0
+
+03 UsekDeklaraciPromennych -> var DeklaracePromennych ; ZbytekDeklaraciPromennych
+
+04 UsekDeklaraciPromennych -> e
+
+05 DeklaracePromennych -> SeznamIdentifikatoru : OznaceniTypu
+
+06 SeznamIdentifikatoru -> identifikator ZbytekSeznamuIdentifikatoru
+    addVar.identifikator = identifikator.value
+
+07 ZbytekSeznamuIdentifikatoru -> , SeznamIdentifikatoru
+
+08 ZbytekSeznamuIdentifikatoru -> e
+ 
+09 OznaceniTypu -> integer
+    OznaceniTypu.type = TYPE_INTEGER
+
+10 OznaceniTypu -> real
+    OznaceniTypu.type = TYPE_REAL
+
+11 ZbytekDeklaraciPromennych -> DeklaracePromennych ; ZbytekDeklaraciPromennych
+
+12 ZbytekDeklaraciPromennych -> e
+
+13 SlozenyPrikaz -> begin PosloupnostPrikazu end
+    PosloupnostPrikazu.firstCmd = SlozenyPrikaz.firstCmd
+    SlozenyPrikaz.nextCmd = PosloupnostPrikazu.nextCmd
+    
+14 PosloupnostPrikazu -> Prikaz ZbytekPosloupnostiPrikazu
+    Prikaz.firstCmd = PosloupnostPrikazu.firstCmd
+    ZbytekPosloupnostiPrikazu.firstCmd = Prikaz.nextCmd
+    PosloupnostPrikazu.nextCmd = ZbytekPosloupnostiPrikazu.nextCmd
+
+15 Prikaz -> PrirazovaciPrikaz
+    PrirazovaciPrikaz.firstCmd = Prikaz.firstCmd
+    Prikaz.nextCmd = PrirazovaciPrikaz.nextCmd
+
+16 Prikaz -> SlozenyPrikaz
+    SlozenyPrikaz.firstCmd = Prikaz.firstCmd
+    Prikaz.nextCmd = SlozenyPrikaz.nextCmd
+
+17 Prikaz -> PrikazIf
+    PrikazIf.firstCmd = Prikaz.firstCmd
+    Prikaz.nextCmd = PrikazIf.nextCmd
+
+18 Prikaz -> PrikazWhile
+    PrikazWhile.firstCmd = Prikaz.firstCmd
+    Prikaz.nextCmd = PrikazWhile.nextCMd
+
+19 Prikaz -> PrikazFor
+    PrikazFor.firstCmd = Prikaz.firstCmd
+    Prikaz.nextCmd = PrikazFor.nextCmd
+
+20 Prikaz -> PrikazWriteln
+    PrikazWriteln.firstCmd = Prikaz.firstCmd
+    Prikaz.nextCmd = PrikazWriteln.nextCmd
+
+21 Prikaz -> PrazdnyPrikaz
+    PrazdnyPrikaz.firstCmd = Prikaz.firstCmd
+    Prikaz.nextCmd = PrazdnyPrikaz.nextCmd
+
+22 PrazdnyPrikaz -> e
+    PrazdnyPrikaz.nextCmd = PrazdnyPrikaz.firstCmd
+
+23 PrirazovaciPrikaz -> identifikator := Vyraz printInstruction1 printInstruction2
+    PrirazovaciPrikaz.nextCmd = PrirazovaciPrikaz.firstCmd
+    printInstruction1.instruction = "i2d"                   /* podm. konverze */
+    printInstruction2 = "dstore " + identifikator.address   /* REAL */
+    printInstruction2 = "istore " + identifikator.address   /* INTEGER  */
+    
+24 Vyraz -> Znamenko Term neg ZbytekVyrazu
+    neg.type = Term.type
+    ZbytekVyrazu.left = Term.type
+    Vyraz.type = ZbytekVyrazu.type
+
+25 Znamenko -> +
+    Znamenko.operator = T_ADD
+
+26 Znamenko -> -
+    Znamenko.operator = T_SUB
+
+27 Znamenko -> e
+    Znamenko.operator = T_ADD
+
+28 Term -> Faktor ZbytekTermu
+    ZbytekTermu.left = Faktor.type
+    Term.type = ZbytekTermu.type
+
+29 Faktor -> identifikator printInstruction
+    Faktor.type = identifikator.type
+    printInstruction.instruction = "dload " + identifikator.address    /* REAL */    
+    printInstruction.instruction = "iload " + identifikator.address    /* INTEGER */
+
+30 Faktor -> celeCislo ldc
+    ldc.value = celeCislo.value
+    ldc.type = TYPE_INTEGER
+    Faktor.type = TYPE_INTEGER
+
+31 Faktor -> realneCislo
+    ldc.value = realneCislo.value
+    ldc.type = TYPE_INTEGER
+    Faktor.type = TYPE_REAL
+
+32 Faktor -> ( Vyraz )
+    Faktor.type = Vyraz.type
+
+33 ZbytekTermu1 -> MultiplikativniOperator Faktor op printInstruction ZbytekTermu2
+    printInstruction.instruction = "i2d"    /* podm. konverze */
+    op.left = ZbytekTermu1.left
+    op.right = Faktor.type
+    op.operator = MultiplikativniOperator.operator
+    ZbytekTermu2.left = op.type
+    ZbytekTermu1.type = ZbytekTermu2.type
+
+34 ZbytekTermu -> e
+    ZbytekTermu.type = ZbytekTermu.left
+
+35 MultiplikativniOperator -> *
+    MultiplikativniOperator.operator = T_MUL
+
+36 MultiplikativniOperator -> /
+    MultiplikativniOperator.operator = T_DIV
+
+37 MultiplikativniOperator -> div
+    MultiplikativniOperator.operator = T_KW_DIV
+
+38 MultiplikativniOperator -> mod
+    MultiplikativniOperator.operator = T_KW_MOD
+    
+39 ZbytekVyrazu1 -> AditivniOperator Term op printInstruction ZbytekVyrazu2
+    printInstruction.instruction = "i2d"    /* podm. konverze */
+    op.left = ZbytekVyrazu1.left
+    op.right = Term.type
+    op.operator = AditivniOperator.operator
+    ZbytekVyrazu2.left = op.type
+    ZbytekVyrazu1.type = ZbytekVyrazu2.type
+
+40 ZbytekVyrazu -> e
+    ZbytekVyrazu.type = ZbytekVyrazu.left
+    
+41 AditivniOperator -> +
+    AditivniOperator.operator = T_ADD
+
+42 AditivniOperator -> -
+    AditivniOperator.operator = T_SUB
+
+43 ZbytekPosloupnostiPrikazu1 -> ; Prikaz ZbytekPosloupnostiPrikazu2
+    Prikaz.firstCmd = ZbytekPosloupnostiPrikazu1.firstCmd
+    ZbytekPosloupnostiPrikazu2.firstCmd = Prikaz.nextCmd
+    ZbytekPosloupnostiPrikazu1.nextCmd = ZbytekPosloupnostiPrikazu2.nextCmd
+
+44 ZbytekPosloupnostiPrikazu -> e
+    ZbytekPosloupnostiPrikazu.nextCmd = ZbytekPosloupnostiPrikazu.firstCmd
+
+45 PrikazIf -> if Podminka printInstruction1 printInstruction2 then Prikaz CastElse
+    printInstruction1.instruction = "dcmpg" /* podm. instrukce pro REAL */
+    printInstruction2.instruction = (if|if_icmp) + (ne|eq|ge|le|lt|gt) + " LABELIF" + PrikazIf.firstCmd
+    Prikaz.firstCmd = PrikazIf.firstCmd + 1
+    CastElse.firstCmd = Prikaz.nextCmd
+    CastElse.nestedCmd = PrikazIf.firstCmd
+    PrikazIf.nextCmd = CastElse.nextCmd
+
+46 Podminka -> Vyraz RelacniOperator Vyraz printInstruction
+    Podminka.oper = RelacniOperator.operator
+    printInstruction.instruction = "i2d" /* podm. konverze */
+
+47 RelacniOperator -> =
+    RelacniOperator.operator = T_EQUAL
+
+48 RelacniOperator -> <>
+    RelacniOperator.operator = T_DIFFER
+
+49 RelacniOperator -> <
+    RelacniOperator.operator = T_LESS
+
+50 RelacniOperator -> >
+    RelacniOperator.operator = T_GREAT
+
+51 RelacniOperator -> <=
+    RelacniOperator.operator = T_LESSEQ
+
+52 RelacniOperator -> >=
+    RelacniOperator.operator = T_GREATEQ
+
+53 CastElse -> printInstruction1 else printInstruction2 Prikaz printInstruction3
+    printInstruction1.instruction = "goto LABELELSE" + CastElse.firstCmd
+    printInstruction2.instruction = "LABELIF" + CastElse.nestedCmd + ":"
+    Prikaz.firstCmd = CastElse.firstCmd + 1
+    printInstruction3.instruction = "LABELELSE" + CastElse.firstCmd + ":"
+    CastElse.nextCmd = CastElse.firstCmd
+
+54 CastElse -> e printInstruction
+    printInstruction.instruction = "LABELIF" + CastElse.nestedCmd + ":"
+    CastElse.nextCmd = CastElse.firstCmd
+
+55 PrikazWhile -> printInstruction1 while Podminka printInstruction2 printInstruction3 do Prikaz printInstruction4 printInstruction5
+    printInstruction1.instruction = "LABELWHILEBEGIN" + PrikazWhile.firstCmd + ":"
+    printInstruction2.instruction = "dcmpg" /* podm. instrukce pro REAL */
+    printInstruction2.instruction = (if|if_icmp) + (ne|eq|ge|le|lt|gt) + " LABELWHILEEND" + PrikazWhile.firstCmd
+    Prikaz.firstCmd = PrikazWhile.firstCmd + 1
+    PrikazWhile.nextCmd = Prikaz.nextCmd
+    printInstruction4.instruction = "goto LABELWHILEBEGIN" + PrikazWhile.firstCmd
+    printInstruction5.instruction = "LABELWHILEEND" + PrikazWhile.firstCmd + ":"
+
+56 PrikazFor -> for identifikator := Vyraz1 printInstruction1 printInstruction2 printInstruction3 CastFor Vyraz2 printInstruction4 do Prikaz printInstruction5 printInstruction6 printInstruction7
+    printInstruction1.instruction = "istore " + identifikator.address
+    printInstruction2.instruction = "LABELFORBEGIN" + PrikazFor.firstCmd + ":"
+    printInstruction3.instruction = "iload " + identifikator.address
+    printInstruction4.instruction = "if_icmpgt LABELFOREND" + PrikazFor.firstCmd  /* (pro CastFor.direction == CYCLE_TO) */
+    printInstruction4.instruction = "if_icmplt LABELFOREND" + PrikazFor.firstCmd  /* (pro CastFor.direction == CYCLE_DOWNTO) */
+    Prikaz.firstCmd = PrikazFor.firstCmd + 1
+    printInstruction5.instruction = "iinc " + identifikator.address + " " + 1 /* (pro CastFor.direction == CYCLE_TO) */
+    printInstruction5.instruction = "iinc " + identifikator.address + " " - 1 /* (pro CastFor.direction == CYCLE_DOWNTO) */
+    printInstruction6.instruction = "goto LABELFORBEGIN" + PrikazFor.firstCmd
+    printInstruction7.instruction = "LABELFOREND" + PrikazFor.firstCmd + ":"
+    prikazFor.nextCmd = Prikaz.nextCmd
+
+57 CastFor -> to
+    CastFor.direction = CYCLE_TO
+
+58 CastFor -> downto
+    CastFor.direction = CYCLE_DOWNTO
+
+59 PrikazWriteln -> writeln ( Vyraz ) print
+    print.type = Vyraz.typ
